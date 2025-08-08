@@ -6,13 +6,26 @@ class ChatGPTAutoThink {
             position: 'end'
         };
         this.isProcessing = false;
+        this.capturedText = null; // Store text before ChatGPT clears it
         this.init();
     }
 
     async init() {
+        console.log('ChatGPT Auto Think Plugin starting initialization...');
         await this.loadSettings();
+        console.log('Settings loaded:', this.settings);
         this.setupMessageInterception();
-        console.log('ChatGPT Auto Think Plugin initialized');
+        console.log('ChatGPT Auto Think Plugin initialized successfully');
+        
+        // Add a simple test to confirm extension is working
+        setTimeout(() => {
+            console.log('Extension test: Looking for elements...');
+            const textArea = document.querySelector('#prompt-textarea');
+            console.log('TextArea found in test:', !!textArea);
+            if (textArea) {
+                console.log('TextArea details:', textArea.id, textArea.tagName, textArea.contentEditable);
+            }
+        }, 2000);
     }
 
     async loadSettings() {
@@ -29,119 +42,304 @@ class ChatGPTAutoThink {
     }
 
     setupMessageInterception() {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.addedNodes.length > 0) {
-                    this.attachEventListeners();
+        console.log('Setting up document-level event interception...');
+        
+        // Document-level keyboard event capture (more reliable)
+        const self = this; // Capture this context
+        document.addEventListener('keydown', function(e) {
+            // Log ALL keydown events to see what's happening
+            if (e.key === 'Enter' || e.key === 'Space') {
+                console.log('Document keydown:', e.key, 'target ID:', e.target.id, 'target tag:', e.target.tagName, 'shiftKey:', e.shiftKey);
+            }
+            
+            const textArea = document.querySelector('#prompt-textarea');
+            if (e.key === 'Enter' && !e.shiftKey && e.target === textArea) {
+                // Skip if this is our own triggered event
+                if (e._autoThinkTriggered) {
+                    console.log('Skipping our own triggered event');
+                    return;
                 }
-            });
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-
-        this.attachEventListeners();
-    }
-
-    attachEventListeners() {
-        const sendButton = document.querySelector('#composer-submit-button, [data-testid="send-button"]');
-        const textArea = document.querySelector('#prompt-textarea');
-        const form = document.querySelector('form[data-type="unified-composer"]');
-
-        if (sendButton && !sendButton.hasAttribute('data-auto-think-attached')) {
-            sendButton.setAttribute('data-auto-think-attached', 'true');
-            sendButton.addEventListener('click', (e) => this.handleSend(e), true);
-        }
-
-        if (textArea && !textArea.hasAttribute('data-auto-think-attached')) {
-            textArea.setAttribute('data-auto-think-attached', 'true');
-            textArea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    this.handleSend(e);
+                
+                console.log('DOCUMENT LEVEL: Enter pressed in textarea');
+                
+                // CAPTURE TEXT IMMEDIATELY before ChatGPT clears it
+                const capturedText = textArea?.innerText || textArea?.textContent || '';
+                console.log('Captured text before clearing:', capturedText);
+                console.log('TextArea has content:', !!capturedText.trim());
+                
+                if (textArea && capturedText.trim()) {
+                    console.log('Storing captured text and PREVENTING original send...');
+                    // PREVENT THE ORIGINAL EVENT IMMEDIATELY
+                    e.preventDefault();
+                    e.stopPropagation(); 
+                    e.stopImmediatePropagation();
+                    
+                    self.capturedText = capturedText.trim();
+                    self.handleSend(e);
+                } else {
+                    console.log('NOT HANDLING: textarea empty or not found');
                 }
-            }, true);
-        }
+            }
+        }, true);
+        
+        // Document-level click event capture
+        document.addEventListener('click', function(e) {
+            // Log all button clicks to see what's happening
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                console.log('Button clicked:', e.target.id, e.target.className, e.target.getAttribute('aria-label'));
+            }
+            
+            const sendButtonSelectors = [
+                '#composer-submit-button',
+                '[data-testid="send-button"]',
+                'button[aria-label="Send prompt"]',
+                '.composer-submit-btn'
+            ];
+            
+            for (const selector of sendButtonSelectors) {
+                if (e.target.matches && e.target.matches(selector)) {
+                    // Skip if this is our own triggered event
+                    if (e._autoThinkTriggered) {
+                        console.log('Allowing our own triggered click event');
+                        return;
+                    }
+                    
+                    console.log('DOCUMENT LEVEL: Send button clicked directly:', selector);
+                    
+                    // CAPTURE TEXT IMMEDIATELY before ChatGPT processes the click
+                    const textArea = document.querySelector('#prompt-textarea');
+                    const capturedText = textArea?.innerText || textArea?.textContent || '';
+                    console.log('Captured text from click:', capturedText);
+                    
+                    if (textArea && capturedText.trim()) {
+                        // PREVENT THE ORIGINAL CLICK IMMEDIATELY
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        self.capturedText = capturedText.trim();
+                        self.handleSend(e);
+                    }
+                    return;
+                }
+                
+                // Check if clicked element is inside a send button
+                const parentButton = e.target.closest(selector);
+                if (parentButton) {
+                    // Skip if this is our own triggered event
+                    if (e._autoThinkTriggered) {
+                        console.log('Allowing our own triggered click event (parent button)');
+                        return;
+                    }
+                    
+                    console.log('DOCUMENT LEVEL: Click inside send button:', selector);
+                    
+                    // CAPTURE TEXT IMMEDIATELY
+                    const textArea = document.querySelector('#prompt-textarea');
+                    const capturedText = textArea?.innerText || textArea?.textContent || '';
+                    console.log('Captured text from parent button click:', capturedText);
+                    
+                    if (textArea && capturedText.trim()) {
+                        // PREVENT THE ORIGINAL CLICK IMMEDIATELY
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        
+                        self.capturedText = capturedText.trim();
+                        self.handleSend(e);
+                    }
+                    return;
+                }
+            }
+        }, true);
+        
+        // Form submission capture
+        document.addEventListener('submit', function(e) {
+            // Skip if this is our own triggered event
+            if (e._autoThinkTriggered) {
+                console.log('Allowing our own triggered submit event');
+                return;
+            }
+            
+            const form = e.target;
+            if (form && form.matches && form.matches('form[data-type="unified-composer"]')) {
+                console.log('DOCUMENT LEVEL: Form submission detected');
+                
+                // CAPTURE TEXT IMMEDIATELY
+                const textArea = document.querySelector('#prompt-textarea');
+                const capturedText = textArea?.innerText || textArea?.textContent || '';
+                console.log('Captured text from form submit:', capturedText);
+                
+                if (textArea && capturedText.trim()) {
+                    // PREVENT THE ORIGINAL SUBMIT IMMEDIATELY
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    
+                    self.capturedText = capturedText.trim();
+                    self.handleSend(e);
+                }
+            }
+        }, true);
 
-        if (form && !form.hasAttribute('data-auto-think-attached')) {
-            form.setAttribute('data-auto-think-attached', 'true');
-            form.addEventListener('submit', (e) => this.handleSend(e), true);
-        }
+        // No mutation observer needed anymore with document-level handlers
+        console.log('Document-level event handlers setup complete');
     }
 
     async handleSend(event) {
+        console.log('=== HANDLE SEND CALLED ===');
+        console.log('Settings enabled:', this.settings.enabled);
+        console.log('Is processing:', this.isProcessing);
+        console.log('Event type:', event.type);
+        console.log('Event target:', event.target);
+        
         if (!this.settings.enabled || this.isProcessing) {
+            console.log('Aborting: disabled or processing');
             return;
         }
 
+        console.log('Setting isProcessing to true...');
         this.isProcessing = true;
 
         try {
+            console.log('Loading settings...');
             await this.loadSettings();
+            console.log('Settings loaded in handleSend:', this.settings);
 
+            console.log('Checking customString:', this.settings.customString);
             if (!this.settings.customString.trim()) {
+                console.log('No custom string, aborting');
                 this.isProcessing = false;
+                this.capturedText = null;
                 return;
             }
 
+            console.log('Looking for textarea...');
             const textArea = document.querySelector('#prompt-textarea');
+            console.log('TextArea found:', !!textArea);
             if (!textArea) {
+                console.log('No textarea found, aborting');
                 this.isProcessing = false;
+                this.capturedText = null;
                 return;
             }
 
-            const currentText = this.getTextContent(textArea);
-            if (!currentText.trim()) {
+            console.log('Using captured text...');
+            const currentText = this.capturedText;
+            console.log('Captured text:', currentText);
+            if (!currentText || !currentText.trim()) {
+                console.log('No captured text, aborting');
                 this.isProcessing = false;
+                this.capturedText = null;
                 return;
             }
 
+            console.log('Processing placeholders...');
             const processedCustomString = this.processPlaceholders(this.settings.customString);
+            console.log('Processed custom string:', processedCustomString);
+            
+            console.log('Creating modified text...');
             const modifiedText = this.appendCustomString(currentText, processedCustomString);
+            console.log('Original text:', currentText);
+            console.log('Modified text:', modifiedText);
 
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
+            console.log('Event already prevented earlier...');
 
-            this.setTextContent(textArea, modifiedText);
+            console.log('Setting text content...');
+            const success = this.setTextContent(textArea, modifiedText);
+            console.log('Text setting success:', success);
+            
+            if (!success) {
+                console.error('Failed to set text content, aborting');
+                this.isProcessing = false;
+                this.capturedText = null;
+                return;
+            }
 
+            console.log('Scheduling send trigger...');
+            // Shorter timeout since we're preventing the original send more effectively
             setTimeout(() => {
+                console.log('Triggering send after text update...');
+                console.log('Current textarea content after update:', this.getTextContent(textArea));
                 this.triggerSend();
                 this.isProcessing = false;
-            }, 50);
+                // Clear captured text after use
+                this.capturedText = null;
+            }, 100);
 
         } catch (error) {
             console.error('Error in handleSend:', error);
+            console.error('Error stack:', error.stack);
             this.isProcessing = false;
+            // Clear captured text on error
+            this.capturedText = null;
         }
     }
 
     getTextContent(element) {
+        console.log('Getting text content from element:', element.tagName, element.contentEditable);
+        
         if (element.contentEditable === 'true') {
-            return element.innerText || element.textContent || '';
+            // For ProseMirror, try multiple methods to get text
+            const innerText = element.innerText;
+            const textContent = element.textContent;
+            const innerHTML = element.innerHTML;
+            
+            console.log('innerText:', innerText);
+            console.log('textContent:', textContent);
+            console.log('innerHTML:', innerHTML);
+            
+            // ProseMirror sometimes needs special handling
+            const text = innerText || textContent || '';
+            console.log('Final extracted text:', JSON.stringify(text));
+            return text.trim();
         } else {
-            return element.value || '';
+            const value = element.value || '';
+            console.log('Input value:', value);
+            return value.trim();
         }
     }
 
     setTextContent(element, text) {
-        if (element.contentEditable === 'true') {
-            element.innerHTML = `<p>${text.replace(/\n/g, '</p><p>')}</p>`;
-
-            const range = document.createRange();
-            const selection = window.getSelection();
-            range.selectNodeContents(element);
-            range.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(range);
-
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
-        } else {
-            element.value = text;
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('Setting text content:', text);
+        console.log('Element type:', element.tagName, 'contentEditable:', element.contentEditable);
+        
+        try {
+            element.focus();
+            
+            // For contenteditable elements (like ProseMirror)
+            if (element.contentEditable === 'true') {
+                // Simple and direct approach - just set the HTML content
+                const lines = text.split('\n');
+                const htmlContent = lines.map(line => `<p>${line || '<br>'}</p>`).join('');
+                element.innerHTML = htmlContent;
+                
+                // Move cursor to end
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // Dispatch events
+                element.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                element.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('Text set in contenteditable element');
+                return true;
+            } else {
+                // For regular input/textarea
+                element.value = text;
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+                element.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('Text set in regular input element');
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to set text content:', error);
+            return false;
         }
     }
 
@@ -172,13 +370,80 @@ class ChatGPTAutoThink {
     }
 
     triggerSend() {
-        const sendButton = document.querySelector('#composer-submit-button, [data-testid="send-button"]');
+        console.log('=== TRIGGER SEND ===');
+        
+        // Multiple selectors for send button (it appears dynamically)
+        const sendButtonSelectors = [
+            '#composer-submit-button',
+            '[data-testid="send-button"]',
+            'button[aria-label="Send prompt"]',
+            '.composer-submit-btn'
+        ];
+        
+        let sendButton = null;
+        let usedSelector = null;
+        
+        // Find the send button
+        for (const selector of sendButtonSelectors) {
+            sendButton = document.querySelector(selector);
+            if (sendButton) {
+                usedSelector = selector;
+                break;
+            }
+        }
+        
         const form = document.querySelector('form[data-type="unified-composer"]');
 
-        if (sendButton && !sendButton.disabled) {
-            sendButton.click();
-        } else if (form) {
-            form.submit();
+        console.log('Send button found:', !!sendButton, 'using selector:', usedSelector);
+        console.log('Send button disabled:', sendButton?.disabled);
+        console.log('Send button aria-disabled:', sendButton?.getAttribute('aria-disabled'));
+        console.log('Form found:', !!form);
+
+        if (sendButton && !sendButton.disabled && !sendButton.getAttribute('aria-disabled')) {
+            console.log('Triggering send with button click...');
+            
+            // Create a new click event that isn't prevented by our handlers
+            const clickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                detail: 1
+            });
+            
+            // Mark this event so our handlers know to ignore it
+            clickEvent._autoThinkTriggered = true;
+            
+            sendButton.dispatchEvent(clickEvent);
+        } else {
+            console.log('No valid send button, trying form submission...');
+            if (form) {
+                const submitEvent = new Event('submit', { 
+                    bubbles: true,
+                    cancelable: true 
+                });
+                
+                // Mark this event so our handlers know to ignore it
+                submitEvent._autoThinkTriggered = true;
+                
+                form.dispatchEvent(submitEvent);
+            } else {
+                console.error('No send mechanism found');
+                // Fallback: try to trigger send by simulating Enter key
+                const textArea = document.querySelector('#prompt-textarea');
+                if (textArea) {
+                    console.log('Fallback: simulating Enter key...');
+                    const enterEvent = new KeyboardEvent('keydown', {
+                        key: 'Enter',
+                        code: 'Enter',
+                        which: 13,
+                        keyCode: 13,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    enterEvent._autoThinkTriggered = true;
+                    textArea.dispatchEvent(enterEvent);
+                }
+            }
         }
     }
 }
