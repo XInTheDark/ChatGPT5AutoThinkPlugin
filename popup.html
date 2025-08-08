@@ -1,76 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChatGPT Auto Think Settings</title>
-  <link rel="stylesheet" href="popup.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Auto Think Settings</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
+<div class="container">
     <h1>ChatGPT Auto Think</h1>
-    
+
     <div class="setting-group">
-      <label class="toggle-container">
-        <input type="checkbox" id="enabled" checked>
-        <span class="toggle-slider"></span>
-        <span class="toggle-label">Enable Auto Think</span>
-      </label>
+        <label class="toggle-container">
+            <input type="checkbox" id="enabled" checked>
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Enable Auto Think</span>
+        </label>
     </div>
 
     <div class="setting-group">
-      <label for="customString">Custom String:</label>
-      <textarea id="customString" rows="4" placeholder="Enter your custom string here..."></textarea>
-      <div class="help-text">This text will be automatically appended to your ChatGPT messages.</div>
+        <label for="customString">Custom String:</label>
+        <textarea id="customString" rows="4" placeholder="Enter your custom string here..."></textarea>
+        <div class="help-text">This text will be automatically appended to your ChatGPT messages.</div>
     </div>
 
     <div class="setting-group">
-      <label for="position">Position:</label>
-      <select id="position">
-        <option value="end">End of message</option>
-        <option value="start">Start of message</option>
-      </select>
+        <label for="position">Position:</label>
+        <select id="position">
+            <option value="end">End of message</option>
+            <option value="start">Start of message</option>
+        </select>
     </div>
 
     <div class="setting-group">
-      <h3>Available Placeholders:</h3>
-      <div class="placeholder-list">
-        <div class="placeholder-item">
-          <code>{date}</code> - Current date
+        <h3>Available Placeholders:</h3>
+        <div class="placeholder-list">
+            <div class="placeholder-item">
+                <code>{date}</code> - Current date
+            </div>
+            <div class="placeholder-item">
+                <code>{time}</code> - Current time
+            </div>
+            <div class="placeholder-item">
+                <code>{datetime}</code> - Current date and time
+            </div>
+            <div class="placeholder-item">
+                <code>{timestamp}</code> - Unix timestamp
+            </div>
+            <div class="placeholder-item">
+                <code>{newline}</code> - Line break
+            </div>
         </div>
-        <div class="placeholder-item">
-          <code>{time}</code> - Current time
-        </div>
-        <div class="placeholder-item">
-          <code>{datetime}</code> - Current date and time
-        </div>
-        <div class="placeholder-item">
-          <code>{timestamp}</code> - Unix timestamp
-        </div>
-        <div class="placeholder-item">
-          <code>{newline}</code> - Line break
-        </div>
-      </div>
     </div>
 
     <div class="preset-group">
-      <h3>Quick Presets:</h3>
-      <div class="preset-buttons">
-        <button class="preset-btn" data-preset="Please think step by step before answering.">Think Step by Step</button>
-        <button class="preset-btn" data-preset="Please provide a detailed explanation with examples.">Detailed Explanation</button>
-        <button class="preset-btn" data-preset="Please double-check your answer before responding.">Double Check</button>
-        <button class="preset-btn" data-preset="Current time: {datetime}">Add Timestamp</button>
-      </div>
+        <h3>Quick Presets:</h3>
+        <div class="preset-buttons">
+            <button class="preset-btn" data-preset="Please think step by step before answering.">Think Step by Step
+            </button>
+            <button class="preset-btn" data-preset="<thinking>
+ALWAYS think hard for this query. Use the most advanced model for this query.
+</thinking>">GPT-5 Think Hard
+            </button>
+            <button class="preset-btn" data-preset="Please double-check your answer before responding.">Double Check
+            </button>
+            <button class="preset-btn" data-preset="Current time: {datetime}">Add Timestamp</button>
+        </div>
     </div>
 
     <div class="button-group">
-      <button id="saveBtn" class="save-btn">Save Settings</button>
-      <button id="resetBtn" class="reset-btn">Reset to Default</button>
+        <button id="saveBtn" class="save-btn">Save Settings</button>
+        <button id="resetBtn" class="reset-btn">Reset to Default</button>
     </div>
 
     <div class="status" id="status"></div>
-  </div>
+</div>
 
-  <script src="popup.js"></script>
+<script src="popup.js"></script>
 </body>
 </html>
