@@ -607,16 +607,19 @@ class ChatGPTAutoThink {
     }
 }
 
+let chatGPTAutoThinkInstance = null;
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        new ChatGPTAutoThink();
+        chatGPTAutoThinkInstance = new ChatGPTAutoThink();
     });
 } else {
-    new ChatGPTAutoThink();
+    chatGPTAutoThinkInstance = new ChatGPTAutoThink();
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync') {
-        window.location.reload();
+    if (area === 'sync' && chatGPTAutoThinkInstance) {
+        // Cleanly reload settings instead of reloading the entire page
+        chatGPTAutoThinkInstance.loadSettings();
     }
 });
