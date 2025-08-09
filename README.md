@@ -2,6 +2,8 @@
 
 A Chrome extension that automatically appends custom strings to your ChatGPT messages before sending them. Perfect for adding consistent prompting instructions like "think step by step" or including timestamps.
 
+Vibe coded, probably breaks in the future.
+
 ## Features
 
 - ✅ Automatically appends custom strings to ChatGPT messages
