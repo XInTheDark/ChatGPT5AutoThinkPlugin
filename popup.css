@@ -145,28 +145,93 @@ textarea:focus, select:focus {
     margin-top: 20px;
 }
 
-.preset-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.preset-controls {
+    display: flex;
     gap: 8px;
     margin-top: 8px;
+    align-items: center;
 }
 
-.preset-btn {
+.preset-controls select {
+    flex: 1;
+}
+
+.preset-apply-btn, .save-preset-btn {
     padding: 8px 12px;
-    background: white;
-    border: 1px solid #dee2e6;
+    background: #007bff;
+    color: white;
+    border: none;
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s ease;
-    color: #495057;
+    white-space: nowrap;
 }
 
-.preset-btn:hover {
-    background: #f8f9fa;
+.preset-apply-btn:hover, .save-preset-btn:hover {
+    background: #0056b3;
+}
+
+.custom-preset-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.custom-preset-controls input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+.custom-preset-controls input:focus {
+    outline: none;
     border-color: #007bff;
-    color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.delete-preset-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+}
+
+.delete-preset-controls select {
+    flex: 1;
+}
+
+.delete-preset-btn {
+    padding: 8px 12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.delete-preset-btn:hover {
+    background: #c82333;
+}
+
+.delete-preset-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.advanced-group {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
 }
 
 .button-group {

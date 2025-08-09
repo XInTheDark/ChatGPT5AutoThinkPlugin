@@ -3,7 +3,8 @@ class ChatGPTAutoThink {
         this.settings = {
             customString: '',
             enabled: true,
-            position: 'end'
+            position: 'end',
+            preventDuplicates: true
         };
         this.isProcessing = false;
         this.capturedText = null; // Store text before ChatGPT clears it
@@ -43,11 +44,12 @@ class ChatGPTAutoThink {
 
     async loadSettings() {
         try {
-            const result = await chrome.storage.sync.get(['customString', 'enabled', 'position']);
+            const result = await chrome.storage.sync.get(['customString', 'enabled', 'position', 'preventDuplicates']);
             this.settings = {
                 customString: result.customString || 'Please think step by step before answering.',
                 enabled: result.enabled !== false,
-                position: result.position || 'end'
+                position: result.position || 'end',
+                preventDuplicates: result.preventDuplicates !== false
             };
         } catch (error) {
             console.error('Failed to load settings:', error);
@@ -459,6 +461,19 @@ class ChatGPTAutoThink {
     }
 
     appendCustomString(originalText, customString) {
+        // Check for duplicates if the setting is enabled
+        if (this.settings.preventDuplicates) {
+            // Normalize whitespace for comparison
+            const normalizedOriginal = originalText.replace(/\s+/g, ' ').trim().toLowerCase();
+            const normalizedCustom = customString.replace(/\s+/g, ' ').trim().toLowerCase();
+            
+            // Check if custom string already exists in original text
+            if (normalizedOriginal.includes(normalizedCustom)) {
+                console.log('Custom string already present, skipping addition');
+                return originalText;
+            }
+        }
+        
         if (this.settings.position === 'start') {
             return customString + '\n\n' + originalText;
         } else {

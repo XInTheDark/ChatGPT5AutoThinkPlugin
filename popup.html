@@ -55,16 +55,39 @@
 
     <div class="preset-group">
         <h3>Quick Presets:</h3>
-        <div class="preset-buttons">
-            <button class="preset-btn" data-preset="Please think step by step before answering.">Think Step by Step
-            </button>
-            <button class="preset-btn" data-preset="<thinking>
+        <div class="preset-controls">
+            <select id="presetDropdown">
+                <option value="">Select a preset...</option>
+                <option value="Please think step by step before answering.">Think Step by Step</option>
+                <option value="<thinking>
 ALWAYS think hard for this query. Use the most advanced model for this query.
-</thinking>">GPT-5 Think Hard
-            </button>
-            <button class="preset-btn" data-preset="Please double-check your answer before responding.">Double Check
-            </button>
-            <button class="preset-btn" data-preset="Current time: {datetime}">Add Timestamp</button>
+</thinking>">GPT-5 Think Hard</option>
+                <option value="Please double-check your answer before responding.">Double Check</option>
+                <option value="Current time: {datetime}">Add Timestamp</option>
+            </select>
+            <button id="applyPreset" class="preset-apply-btn">Apply</button>
+        </div>
+        <div class="custom-preset-controls">
+            <input type="text" id="presetName" placeholder="Enter preset name...">
+            <button id="savePreset" class="save-preset-btn">Save Current</button>
+        </div>
+        <div class="delete-preset-controls">
+            <select id="deletePresetDropdown">
+                <option value="">Select preset to delete...</option>
+            </select>
+            <button id="deletePreset" class="delete-preset-btn">Delete</button>
+        </div>
+    </div>
+
+    <div class="advanced-group">
+        <h3>Advanced Settings:</h3>
+        <div class="setting-group">
+            <label class="toggle-container">
+                <input type="checkbox" id="preventDuplicates" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Prevent duplicate text</span>
+            </label>
+            <div class="help-text">Skip adding custom string if it's already present in the message.</div>
         </div>
     </div>
 
