@@ -5,10 +5,12 @@ class ChatGPTAutoThink {
             enabled: true,
             position: 'end',
             preventDuplicates: true,
+            hideAppendedInUI: true,
             debug: false
         };
         this.isProcessing = false;
         this.capturedText = null;
+        this.lastProcessedCustomString = null;
         this.init();
     }
 
@@ -31,16 +33,18 @@ class ChatGPTAutoThink {
     async init() {
         await this.loadSettings();
         this.setupInterception();
+        this.setupUIMasking();
         this.log('Initialized');
     }
 
     async loadSettings() {
         try {
-            const result = await chrome.storage.sync.get(['customString', 'enabled', 'position', 'preventDuplicates', 'debug']);
+            const result = await chrome.storage.sync.get(['customString', 'enabled', 'position', 'preventDuplicates', 'hideAppendedInUI', 'debug']);
             this.settings.customString = result.customString || this.settings.customString;
             this.settings.enabled = result.enabled !== false;
             this.settings.position = result.position || 'end';
             this.settings.preventDuplicates = result.preventDuplicates !== false;
+            this.settings.hideAppendedInUI = typeof result.hideAppendedInUI === 'boolean' ? result.hideAppendedInUI : true;
             this.settings.debug = typeof result.debug === 'boolean' ? result.debug : false;
             this.log('Settings loaded', this.settings);
         } catch (err) {
@@ -76,6 +80,7 @@ class ChatGPTAutoThink {
                 if (self.shouldHandle(captured)) {
                     const processed = self.processPlaceholders(self.settings.customString);
                     const modified = self.appendCustomString(captured, processed);
+                    self.lastProcessedCustomString = processed;
                     self.setTextContent(edit, modified);
                     // Let native handler continue to submit the edit
                     self.log('Edited text updated, letting native edit submit');
@@ -117,6 +122,7 @@ class ChatGPTAutoThink {
                 if (edit && self.shouldHandle(captured)) {
                     const processed = self.processPlaceholders(self.settings.customString);
                     const modified = self.appendCustomString(captured, processed);
+                    self.lastProcessedCustomString = processed;
                     self.setTextContent(edit, modified);
                 }
             }
@@ -162,6 +168,7 @@ class ChatGPTAutoThink {
 
             const processed = this.processPlaceholders(this.settings.customString);
             const modified = this.appendCustomString(currentText, processed);
+            this.lastProcessedCustomString = processed;
 
             const ok = this.setTextContent(main, modified);
             if (!ok) {
@@ -180,6 +187,150 @@ class ChatGPTAutoThink {
             this.isProcessing = false;
             this.capturedText = null;
         }
+    }
+
+    // UI masking of custom string in user message bubbles (cosmetic only)
+    setupUIMasking() {
+        const runInitialPass = () => {
+            try {
+                if (!this.settings.hideAppendedInUI) return;
+                const nodes1 = document.querySelectorAll('[data-message-author-role="user"][data-message-id]');
+                const nodes2 = document.querySelectorAll('.user-message-bubble-color');
+                nodes1.forEach(node => this.maskNodeIfNeeded(node));
+                nodes2.forEach(node => this.maskNodeIfNeeded(node));
+            } catch (e) {
+                this.warn('Initial UI masking pass failed', e);
+            }
+        };
+
+        // Initial pass after a short delay to let DOM settle
+        setTimeout(runInitialPass, 300);
+
+        const observer = new MutationObserver(mutations => {
+            if (!this.settings.hideAppendedInUI) return;
+            for (const m of mutations) {
+                for (const n of m.addedNodes) {
+                    if (!(n instanceof HTMLElement)) continue;
+                    // Direct user message node
+                    if (n.matches?.('[data-message-author-role="user"][data-message-id]')) {
+                        this.maskNodeIfNeeded(n);
+                        continue;
+                    }
+                    // Direct user bubble
+                    if (n.matches?.('.user-message-bubble-color')) {
+                        this.maskNodeIfNeeded(n);
+                        continue;
+                    }
+                    // Or any descendants that include user messages
+                    const candidates = n.querySelectorAll?.('[data-message-author-role="user"][data-message-id], .user-message-bubble-color');
+                    candidates?.forEach(el => this.maskNodeIfNeeded(el));
+                }
+                if (m.type === 'characterData') {
+                    const node = m.target.parentElement;
+                    if (node) {
+                        const container = node.closest?.('.user-message-bubble-color, [data-message-author-role="user"][data-message-id]');
+                        if (container) this.maskNodeIfNeeded(container);
+                    }
+                }
+            }
+        });
+
+        try {
+            observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+            this.log('UI masking observer attached');
+        } catch (e) {
+            this.warn('Failed to attach UI masking observer', e);
+        }
+    }
+
+    maskNodeIfNeeded(container) {
+        if (!container) return;
+        const textEl = this.findUserTextElement(container);
+        if (!textEl) return;
+
+        // Restore if masking disabled but previously redacted
+        if (!this.settings.hideAppendedInUI && container.getAttribute('data-auto-think-redacted') === '1') {
+            const orig = textEl.getAttribute('data-auto-think-original');
+            if (orig != null) {
+                textEl.textContent = orig;
+            }
+            container.removeAttribute('data-auto-think-redacted');
+            return;
+        }
+
+        if (container.getAttribute('data-auto-think-redacted') === '1') return;
+
+        const original = textEl.textContent || '';
+        if (!original) return;
+
+        const cs = this.lastProcessedCustomString || this.processPlaceholders(this.settings.customString);
+        const redacted = this.redactCustomStringFromText(original, cs, this.settings.position);
+        if (redacted !== original) {
+            if (!textEl.hasAttribute('data-auto-think-original')) {
+                textEl.setAttribute('data-auto-think-original', original);
+            }
+            textEl.textContent = redacted;
+            container.setAttribute('data-auto-think-redacted', '1');
+            this.log('Redacted appended custom string in UI for a user message');
+        }
+    }
+
+    findUserTextElement(container) {
+        // Primary: div with whitespace-pre-wrap inside the user bubble
+        let el = container.querySelector?.('.user-message-bubble-color .whitespace-pre-wrap');
+        if (el) return el;
+        // Fallback: any whitespace-pre-wrap under the container
+        el = container.querySelector?.('.whitespace-pre-wrap');
+        if (el) return el;
+        // Fallback: bubble root itself
+        el = container.querySelector?.('.user-message-bubble-color') || (container.classList?.contains('user-message-bubble-color') ? container : null);
+        return el || null;
+    }
+
+    redactCustomStringFromText(text, customString, position) {
+        if (!customString) return text;
+        const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Allow flexible whitespace differences between composer and render
+        const patternFlexibleWS = esc(customString).replace(/\s+/g, '\\s+');
+        let out = text;
+        if (position === 'start') {
+            const re = new RegExp(`^\\s*(?:${patternFlexibleWS})\\s*`, '');
+            out = out.replace(re, '');
+        } else {
+            const re = new RegExp(`\\s*(?:${patternFlexibleWS})\\s*$`, '');
+            out = out.replace(re, '');
+        }
+        if (out.trim() !== text.trim()) return out.trim();
+
+        // Fallback heuristic: remove leading/trailing block split by blank line(s)
+        const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        const normCustom = norm(customString);
+        if (!normCustom) return out.trim();
+
+        if (position === 'start') {
+            const m = text.match(/^(.*?)(?:\n\s*\n)([\s\S]*)$/);
+            if (m) {
+                const head = m[1];
+                const rest = m[2];
+                if (norm(head).startsWith(normCustom.slice(0, Math.min(40, normCustom.length)))) {
+                    return rest.trim();
+                }
+            }
+        } else {
+            // Remove last block if it closely matches custom
+            const idx = text.search(/\n\s*\n[\s\S]*$/);
+            if (idx >= 0) {
+                const before = text.slice(0, idx);
+                const after = text.slice(idx).replace(/^\n\s*\n/, '');
+                const normAfter = norm(after);
+                // Consider a match if the start or end substrings overlap substantially
+                const sampleLen = Math.min(60, normCustom.length);
+                if (normAfter.startsWith(normCustom.slice(0, sampleLen)) || normCustom.startsWith(normAfter.slice(0, Math.min(sampleLen, normAfter.length)))) {
+                    return before.trim();
+                }
+            }
+        }
+        return out.trim();
     }
 
     // Element helpers
@@ -342,6 +493,31 @@ if (document.readyState === 'loading') {
 
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync' && chatGPTAutoThinkInstance) {
-        chatGPTAutoThinkInstance.loadSettings();
+        chatGPTAutoThinkInstance.loadSettings().then(() => {
+            // 1. Mask or restore UI elements based on changes
+            try {
+                const nodes = document.querySelectorAll('[data-message-author-role="user"][data-message-id], .user-message-bubble-color');
+                if (changes.hideAppendedInUI) {
+                    const enabled = !!changes.hideAppendedInUI.newValue;
+                    if (enabled) {
+                        // Redact on enable
+                        nodes.forEach(node => chatGPTAutoThinkInstance.maskNodeIfNeeded(node));
+                    } else {
+                        // Restore on disable
+                        nodes.forEach(node => {
+                            const textEl = chatGPTAutoThinkInstance.findUserTextElement(node);
+                            if (!textEl) return;
+                            const orig = textEl.getAttribute('data-auto-think-original');
+                            if (orig != null) {
+                                textEl.textContent = orig;
+                            }
+                            node.removeAttribute('data-auto-think-redacted');
+                        });
+                    }
+                }
+            } catch (e) {
+                chatGPTAutoThinkInstance.warn('Failed to run masking/restore after setting change', e);
+            }
+        });
     }
 });

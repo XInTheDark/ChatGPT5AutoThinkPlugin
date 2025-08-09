@@ -21,6 +21,7 @@ class PopupController {
             customString: 'Please think step by step before answering.',
             position: 'end',
             preventDuplicates: true,
+            hideAppendedInUI: true,
             debug: false,
             customPresets: {}
         };
@@ -44,12 +45,15 @@ class PopupController {
 
     async loadSettings() {
         try {
-            const result = await chrome.storage.sync.get(['enabled', 'customString', 'position', 'preventDuplicates', 'debug', 'customPresets']);
+            const result = await chrome.storage.sync.get(['enabled', 'customString', 'position', 'preventDuplicates', 'hideAppendedInUI', 'debug', 'customPresets']);
 
             this.elements.enabled.checked = result.enabled !== false;
             this.elements.customString.value = result.customString || this.defaults.customString;
             this.elements.position.value = result.position || this.defaults.position;
             this.elements.preventDuplicates.checked = result.preventDuplicates !== false;
+            const hideUI = typeof result.hideAppendedInUI === 'boolean' ? result.hideAppendedInUI : this.defaults.hideAppendedInUI;
+            const hideCheckbox = document.getElementById('hideAppendedInUI');
+            if (hideCheckbox) hideCheckbox.checked = hideUI;
             const debug = typeof result.debug === 'boolean' ? result.debug : this.defaults.debug;
             const debugCheckbox = document.getElementById('debug');
             if (debugCheckbox) debugCheckbox.checked = debug;
@@ -68,6 +72,10 @@ class PopupController {
         this.elements.enabled.addEventListener('change', () => this.clearStatus());
         this.elements.position.addEventListener('change', () => this.clearStatus());
         this.elements.preventDuplicates.addEventListener('change', () => this.clearStatus());
+        const hideCheckbox = document.getElementById('hideAppendedInUI');
+        if (hideCheckbox) {
+            hideCheckbox.addEventListener('change', () => this.clearStatus());
+        }
         const debugCheckbox = document.getElementById('debug');
         if (debugCheckbox) {
             debugCheckbox.addEventListener('change', () => this.clearStatus());
@@ -234,6 +242,7 @@ class PopupController {
                 customString: this.elements.customString.value.trim(),
                 position: this.elements.position.value,
                 preventDuplicates: this.elements.preventDuplicates.checked,
+                hideAppendedInUI: (document.getElementById('hideAppendedInUI')?.checked) ?? this.defaults.hideAppendedInUI,
                 debug: (document.getElementById('debug')?.checked) || false,
                 customPresets: this.customPresets
             };
@@ -252,6 +261,8 @@ class PopupController {
             this.elements.customString.value = this.defaults.customString;
             this.elements.position.value = this.defaults.position;
             this.elements.preventDuplicates.checked = this.defaults.preventDuplicates;
+            const hideCheckbox = document.getElementById('hideAppendedInUI');
+            if (hideCheckbox) hideCheckbox.checked = this.defaults.hideAppendedInUI;
             this.customPresets = this.defaults.customPresets;
 
             await chrome.storage.sync.set(this.defaults);
