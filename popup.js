@@ -21,6 +21,7 @@ class PopupController {
             customString: 'Please think step by step before answering.',
             position: 'end',
             preventDuplicates: true,
+            debug: false,
             customPresets: {}
         };
 
@@ -43,12 +44,15 @@ class PopupController {
 
     async loadSettings() {
         try {
-            const result = await chrome.storage.sync.get(['enabled', 'customString', 'position', 'preventDuplicates', 'customPresets']);
+            const result = await chrome.storage.sync.get(['enabled', 'customString', 'position', 'preventDuplicates', 'debug', 'customPresets']);
 
             this.elements.enabled.checked = result.enabled !== false;
             this.elements.customString.value = result.customString || this.defaults.customString;
             this.elements.position.value = result.position || this.defaults.position;
             this.elements.preventDuplicates.checked = result.preventDuplicates !== false;
+            const debug = typeof result.debug === 'boolean' ? result.debug : this.defaults.debug;
+            const debugCheckbox = document.getElementById('debug');
+            if (debugCheckbox) debugCheckbox.checked = debug;
             this.customPresets = result.customPresets || this.defaults.customPresets;
         } catch (error) {
             this.showStatus('Error loading settings', 'error');
@@ -64,6 +68,10 @@ class PopupController {
         this.elements.enabled.addEventListener('change', () => this.clearStatus());
         this.elements.position.addEventListener('change', () => this.clearStatus());
         this.elements.preventDuplicates.addEventListener('change', () => this.clearStatus());
+        const debugCheckbox = document.getElementById('debug');
+        if (debugCheckbox) {
+            debugCheckbox.addEventListener('change', () => this.clearStatus());
+        }
 
         this.elements.applyPreset.addEventListener('click', () => this.applySelectedPreset());
         this.elements.savePreset.addEventListener('click', () => this.saveCustomPreset());
@@ -179,7 +187,7 @@ class PopupController {
         try {
             this.customPresets[name] = content;
             await chrome.storage.sync.set({ customPresets: this.customPresets });
-            
+
             this.elements.presetName.value = '';
             this.populatePresetDropdown();
             this.showStatus(`Preset "${name}" saved successfully!`, 'success');
@@ -210,7 +218,7 @@ class PopupController {
         try {
             delete this.customPresets[name];
             await chrome.storage.sync.set({ customPresets: this.customPresets });
-            
+
             this.populatePresetDropdown();
             this.showStatus(`Preset "${name}" deleted successfully!`, 'success');
         } catch (error) {
@@ -226,6 +234,7 @@ class PopupController {
                 customString: this.elements.customString.value.trim(),
                 position: this.elements.position.value,
                 preventDuplicates: this.elements.preventDuplicates.checked,
+                debug: (document.getElementById('debug')?.checked) || false,
                 customPresets: this.customPresets
             };
 

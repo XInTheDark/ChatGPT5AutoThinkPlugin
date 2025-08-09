@@ -1,0 +1,14 @@
+# IDE / Project files
+.idea/
+*.iml
+
+# Node / tooling
+node_modules/
+
+# OS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

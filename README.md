@@ -1,6 +1,7 @@
 # ChatGPT Auto Think Plugin
 
-A Chrome extension that automatically appends custom strings to your ChatGPT messages before sending them. Perfect for adding consistent prompting instructions like "think step by step" or including timestamps.
+A Chrome extension that automatically appends custom strings to your ChatGPT messages before sending them. Perfect for
+adding consistent prompting instructions like "think step by step" or including timestamps.
 
 Vibe coded, probably breaks in the future.
 
@@ -12,6 +13,7 @@ Vibe coded, probably breaks in the future.
 - ✅ Built-in preset templates
 - ✅ Enable/disable toggle
 - ✅ Placeholder support for dates, times, and more
+- ✅ Optional debug logging toggle (Advanced)
 
 ## Installation
 
@@ -21,7 +23,8 @@ Vibe coded, probably breaks in the future.
 4. Click "Load unpacked" and select the extension directory
 5. The extension should now be loaded and visible in your extensions list
 
-Note: You'll need to add your own icon files (`icon16.png`, `icon48.png`, `icon128.png`) to the directory, or remove the icons section from `manifest.json`.
+Note: You'll need to add your own icon files (`icon16.png`, `icon48.png`, `icon128.png`) to the directory, or remove the
+icons section from `manifest.json`.
 
 ## Usage
 
@@ -31,11 +34,12 @@ Note: You'll need to add your own icon files (`icon16.png`, `icon48.png`, `icon1
 4. Use the preset buttons for quick setup
 5. Save your settings
 6. Visit ChatGPT.com and start chatting - your custom string will be automatically added!
+    - Also supports `chat.openai.com`.
 
 ## Available Placeholders
 
 - `{date}` - Current date
-- `{time}` - Current time  
+- `{time}` - Current time
 - `{datetime}` - Current date and time
 - `{timestamp}` - Unix timestamp
 - `{newline}` - Line break
@@ -63,6 +67,11 @@ The extension consists of:
 - `content.js` - Script that runs on ChatGPT pages to intercept messages
 - `popup.html/js/css` - Settings interface
 - Chrome storage API for saving user preferences
+
+### Debug logging
+
+Enable "Debug logging" in the popup under Advanced to print detailed diagnostics to the console while testing. Keep it
+off for normal usage.
 
 ## License
 

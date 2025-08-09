@@ -61,7 +61,8 @@
                 <option value="Please think step by step before answering.">Think Step by Step</option>
                 <option value="<thinking>
 ALWAYS think hard for this query. Use the most advanced model for this query.
-</thinking>">GPT-5 Think Hard</option>
+</thinking>">GPT-5 Think Hard
+                </option>
                 <option value="Please double-check your answer before responding.">Double Check</option>
                 <option value="Current time: {datetime}">Add Timestamp</option>
             </select>
@@ -88,6 +89,14 @@ ALWAYS think hard for this query. Use the most advanced model for this query.
                 <span class="toggle-label">Prevent duplicate text</span>
             </label>
             <div class="help-text">Skip adding custom string if it's already present in the message.</div>
+        </div>
+        <div class="setting-group">
+            <label class="toggle-container">
+                <input type="checkbox" id="debug">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Enable debug logging</span>
+            </label>
+            <div class="help-text">When enabled, the content script logs detailed diagnostics to the console.</div>
         </div>
     </div>
 
