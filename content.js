@@ -167,7 +167,18 @@ class ChatGPTAutoThink {
             }
 
             const processed = this.processPlaceholders(this.settings.customString);
+            this.log('handleSend: captured', { len: currentText.length, preview: currentText.slice(0, 100) });
+            this.log('handleSend: customString (processed)', {
+                len: processed.length,
+                lines: processed.split('\n').length,
+                position: this.settings.position
+            });
             const modified = this.appendCustomString(currentText, processed);
+            this.log('handleSend: modified text', {
+                len: modified.length,
+                lines: modified.split('\n').length,
+                preview: modified.slice(0, 120)
+            });
             this.lastProcessedCustomString = processed;
 
             const ok = this.setTextContent(main, modified);
@@ -264,6 +275,11 @@ class ChatGPTAutoThink {
         if (!original) return;
 
         const cs = this.lastProcessedCustomString || this.processPlaceholders(this.settings.customString);
+        this.log('maskNodeIfNeeded: attempt', {
+            originalLen: original.length,
+            csLen: cs.length,
+            position: this.settings.position
+        });
         const redacted = this.redactCustomStringFromText(original, cs, this.settings.position);
         if (redacted !== original) {
             if (!textEl.hasAttribute('data-auto-think-original')) {
@@ -272,6 +288,8 @@ class ChatGPTAutoThink {
             textEl.textContent = redacted;
             container.setAttribute('data-auto-think-redacted', '1');
             this.log('Redacted appended custom string in UI for a user message');
+        } else {
+            this.log('maskNodeIfNeeded: no change after redaction attempt');
         }
     }
 
@@ -292,44 +310,30 @@ class ChatGPTAutoThink {
         const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         // Allow flexible whitespace differences between composer and render
         const patternFlexibleWS = esc(customString).replace(/\s+/g, '\\s+');
+        this.log('redactCustomStringFromText: begin', {
+            position,
+            customLen: customString.length,
+            textLen: text.length,
+            linesText: text.split('\n').length,
+            pattern: patternFlexibleWS.slice(0, 120)
+        });
         let out = text;
         if (position === 'start') {
             const re = new RegExp(`^\\s*(?:${patternFlexibleWS})\\s*`, '');
+            const matched = re.test(out);
+            this.log('redactCustomStringFromText: start regex', { matched });
             out = out.replace(re, '');
         } else {
             const re = new RegExp(`\\s*(?:${patternFlexibleWS})\\s*$`, '');
+            const matched = re.test(out);
+            this.log('redactCustomStringFromText: end regex', { matched });
             out = out.replace(re, '');
         }
-        if (out.trim() !== text.trim()) return out.trim();
-
-        // Fallback heuristic: remove leading/trailing block split by blank line(s)
-        const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
-        const normCustom = norm(customString);
-        if (!normCustom) return out.trim();
-
-        if (position === 'start') {
-            const m = text.match(/^(.*?)(?:\n\s*\n)([\s\S]*)$/);
-            if (m) {
-                const head = m[1];
-                const rest = m[2];
-                if (norm(head).startsWith(normCustom.slice(0, Math.min(40, normCustom.length)))) {
-                    return rest.trim();
-                }
-            }
-        } else {
-            // Remove last block if it closely matches custom
-            const idx = text.search(/\n\s*\n[\s\S]*$/);
-            if (idx >= 0) {
-                const before = text.slice(0, idx);
-                const after = text.slice(idx).replace(/^\n\s*\n/, '');
-                const normAfter = norm(after);
-                // Consider a match if the start or end substrings overlap substantially
-                const sampleLen = Math.min(60, normCustom.length);
-                if (normAfter.startsWith(normCustom.slice(0, sampleLen)) || normCustom.startsWith(normAfter.slice(0, Math.min(sampleLen, normAfter.length)))) {
-                    return before.trim();
-                }
-            }
+        if (out.trim() !== text.trim()) {
+            this.log('redactCustomStringFromText: regex removal succeeded');
+            return out.trim();
         }
+        this.log('redactCustomStringFromText: no changes');
         return out.trim();
     }
 
@@ -370,9 +374,14 @@ class ChatGPTAutoThink {
     getTextContent(element) {
         if (element.isContentEditable || element.contentEditable === 'true') {
             // ProseMirror exposes plain text via innerText
-            return (element.innerText || element.textContent || '').trim();
+            let txt = (element.innerText || element.textContent || '').trim();
+            txt = txt.replace(/\n{2,}/g, '\n').replace(/\r/g, ''); // Normalize newlines
+            this.log('getTextContent(contenteditable)', { len: txt.length, lines: txt.split('\n').length });
+            return txt;
         }
-        return (element.value || '').trim();
+        let val = (element.value || '').trim();
+        this.log('getTextContent(textarea)', { len: val.length, lines: val.split('\n').length });
+        return val;
     }
 
     setTextContent(element, text) {
@@ -388,6 +397,10 @@ class ChatGPTAutoThink {
                 // Replace content safely without using innerHTML
                 while (element.firstChild) element.removeChild(element.firstChild);
                 const lines = String(text).split('\n');
+                this.log('setTextContent(contenteditable): rebuilding', {
+                    lines: lines.length,
+                    len: String(text).length
+                });
                 for (const line of lines) {
                     const p = document.createElement('p');
                     if (line.length === 0) {
@@ -443,9 +456,16 @@ class ChatGPTAutoThink {
             const b = String(customString).replace(/\s+/g, ' ').trim().toLowerCase();
             if (a.includes(b)) return originalText;
         }
-        return this.settings.position === 'start'
+        const result = this.settings.position === 'start'
             ? `${customString}\n\n${originalText}`
             : `${originalText}\n\n${customString}`;
+        this.log('appendCustomString', {
+            pos: this.settings.position,
+            origLen: String(originalText).length,
+            csLen: String(customString).length,
+            resultLen: result.length
+        });
+        return result;
     }
 
     triggerSend() {
