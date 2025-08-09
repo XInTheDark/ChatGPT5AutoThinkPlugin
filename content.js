@@ -371,11 +371,19 @@ class ChatGPTAutoThink {
         return !!(rect.width || rect.height) && getComputedStyle(el).visibility !== 'hidden';
     }
 
+    // 2 → 1, 5 → 2, 8 → 3, ...
+    compressNewlines(txt) {
+        return txt
+            .replace(/\r\n?/g, '\n')                 // normalize CRLF/CR to LF
+            .replace(/\n{2,}/g, m => '\n'.repeat(Math.floor((m.length + 1) / 3)));
+    }
+
     getTextContent(element) {
         if (element.isContentEditable || element.contentEditable === 'true') {
             // ProseMirror exposes plain text via innerText
             let txt = (element.innerText || element.textContent || '').trim();
-            txt = txt.replace(/\n{2,}/g, '\n').replace(/\r/g, ''); // Normalize newlines
+            this.log("raw text", txt.slice(0, 100));
+            txt = this.compressNewlines(txt);
             this.log('getTextContent(contenteditable)', { len: txt.length, lines: txt.split('\n').length });
             return txt;
         }
