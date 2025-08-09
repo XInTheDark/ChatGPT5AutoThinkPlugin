@@ -86,7 +86,7 @@ class ChatGPTAutoThink {
                 console.log('Captured text before clearing:', capturedText);
                 console.log('TextArea has content:', !!capturedText.trim());
 
-                if (textArea && capturedText.trim()) {
+                if (textArea && capturedText.trim() && self.settings.enabled) {
                     console.log('Storing captured text and PREVENTING original send...');
                     // PREVENT THE ORIGINAL EVENT IMMEDIATELY
                     e.preventDefault();
@@ -96,7 +96,7 @@ class ChatGPTAutoThink {
                     self.capturedText = capturedText.trim();
                     self.handleSend(e);
                 } else {
-                    console.log('NOT HANDLING: textarea empty or not found');
+                    console.log('NOT HANDLING: extension disabled, no custom string, or textarea empty');
                 }
             }
             // Handle editing interface with Command+Enter or Control+Enter
@@ -113,7 +113,7 @@ class ChatGPTAutoThink {
                     const capturedText = editingTextArea?.value || editingTextArea?.innerText || editingTextArea?.textContent || '';
                     console.log('Captured text (editing):', capturedText);
 
-                    if (editingTextArea && capturedText.trim() && self.settings.enabled && self.settings.customString.trim()) {
+                    if (editingTextArea && capturedText.trim() && self.settings.enabled) {
                         console.log('Modifying editing text and allowing original action to proceed...');
                         
                         // Process the custom string
@@ -167,7 +167,7 @@ class ChatGPTAutoThink {
                     const capturedText = textArea?.innerText || textArea?.textContent || '';
                     console.log('Captured text from click:', capturedText);
 
-                    if (textArea && capturedText.trim()) {
+                    if (textArea && capturedText.trim() && self.settings.enabled) {
                         // PREVENT THE ORIGINAL CLICK IMMEDIATELY
                         e.preventDefault();
                         e.stopPropagation();
@@ -175,6 +175,8 @@ class ChatGPTAutoThink {
 
                         self.capturedText = capturedText.trim();
                         self.handleSend(e);
+                    } else {
+                        console.log('NOT HANDLING: extension disabled, no custom string, or textarea empty');
                     }
                     return;
                 }
@@ -195,7 +197,7 @@ class ChatGPTAutoThink {
                     const capturedText = textArea?.innerText || textArea?.textContent || '';
                     console.log('Captured text from parent button click:', capturedText);
 
-                    if (textArea && capturedText.trim()) {
+                    if (textArea && capturedText.trim() && self.settings.enabled) {
                         // PREVENT THE ORIGINAL CLICK IMMEDIATELY
                         e.preventDefault();
                         e.stopPropagation();
@@ -203,6 +205,8 @@ class ChatGPTAutoThink {
 
                         self.capturedText = capturedText.trim();
                         self.handleSend(e);
+                    } else {
+                        console.log('NOT HANDLING: extension disabled, no custom string, or textarea empty');
                     }
                     return;
                 }
@@ -217,7 +221,7 @@ class ChatGPTAutoThink {
                 const capturedText = editingTextArea?.value || editingTextArea?.innerText || editingTextArea?.textContent || '';
                 console.log('Captured text from editing button click:', capturedText);
 
-                if (editingTextArea && capturedText.trim() && self.settings.enabled && self.settings.customString.trim()) {
+                if (editingTextArea && capturedText.trim() && self.settings.enabled) {
                     console.log('Modifying editing text and allowing original click to proceed...');
                     
                     // Process the custom string
@@ -254,7 +258,7 @@ class ChatGPTAutoThink {
                 const capturedText = textArea?.innerText || textArea?.textContent || '';
                 console.log('Captured text from form submit:', capturedText);
 
-                if (textArea && capturedText.trim()) {
+                if (textArea && capturedText.trim() && self.settings.enabled) {
                     // PREVENT THE ORIGINAL SUBMIT IMMEDIATELY
                     e.preventDefault();
                     e.stopPropagation();
@@ -262,6 +266,8 @@ class ChatGPTAutoThink {
 
                     self.capturedText = capturedText.trim();
                     self.handleSend(e);
+                } else {
+                    console.log('NOT HANDLING: extension disabled, no custom string, or textarea empty');
                 }
             }
         }, true);
